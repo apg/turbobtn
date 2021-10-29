@@ -1,0 +1,55 @@
+#!/usr/bin/env wish
+# -*- mode: tcl -*-
+proc scalePath {cpu} {
+    format "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_governor" $cpu
+}
+
+proc currentTurbo {cpu} {
+    set path [scalePath $cpu]
+    set fp [open $path r]
+    set cur [read $fp]
+    close $fp
+    return [string trimright $cur]
+}
+
+proc turbo {cpu governor} {
+    set path [scalePath $cpu]
+    set fp [open $path w]
+    puts $fp $governor
+    close $fp
+}
+
+proc turboall {governor} {
+    # try all of them, failing if when we don't have any more.
+    set cpu 0
+    while {![catch {turbo $cpu $governor} errmsg]} {
+        set cpu [expr $cpu + 1]
+    }
+}
+
+proc toggle {} {
+    if {[currentTurbo 0] == "performance"} {
+        turboall "powersave"
+        .toggleButton configure -image offimage
+    } else {
+        turboall "performance"
+        .toggleButton configure -image onimage
+    }
+}
+
+proc init {} {
+    if {[currentTurbo 0] == "performance"} {
+        .toggleButton configure -image onimage
+    } else {
+        .toggleButton configure -image offimage
+    }
+}
+
+wm minsize . 164 164
+wm maxsize . 164 164
+wm title . "Turbo Button"
+
+image create photo onimage -file "on.png"
+image create photo offimage -file "off.png"
+grid [button .toggleButton -command {toggle}]
+init
